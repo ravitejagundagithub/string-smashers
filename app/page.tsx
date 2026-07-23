@@ -1057,7 +1057,7 @@ export default function TournamentApp() {
 interface ScheduleTableProps {
   matchList: Match[];
   nextActiveMatchId?: number;
-  activeMatchRef: React.RefObject<HTMLDivElement | null>;
+  activeMatchRef: React.Ref<HTMLDivElement> | null;
 }
 
 function ScheduleTable({
@@ -1092,7 +1092,7 @@ function ScheduleTable({
               <tr
                 key={m.id}
                 ref={(node) => {
-                  if (isCurrent && activeMatchRef) {
+                  if (isCurrent && activeMatchRef && 'current' in activeMatchRef) {
                     (activeMatchRef as React.MutableRefObject<any>).current = node;
                   }
                 }}
@@ -1172,7 +1172,7 @@ function ScheduleTable({
 interface MatchCardProps {
   match: Match;
   isNextMatch?: boolean;
-  activeRef?: React.RefObject<HTMLDivElement | null> | null;
+  activeRef?: React.Ref<HTMLDivElement> | null;
   isAdmin: boolean;
   savingId: number | null;
   onChange: (id: number, teamNum: 1 | 2, val: string) => void;
@@ -1201,7 +1201,11 @@ function MatchCard({
 
   return (
     <div
-      ref={isNextMatch && activeRef ? activeRef : null}
+      ref={(node) => {
+        if (isNextMatch && activeRef && 'current' in activeRef) {
+          (activeRef as React.MutableRefObject<any>).current = node;
+        }
+      }}
       className={`p-3.5 md:p-4 rounded-xl flex flex-col justify-between space-y-3 shadow-md transition-all duration-300 relative ${
         isNextMatch
           ? 'bg-slate-800 border-2 border-amber-400 ring-4 ring-amber-400/20 shadow-amber-500/10'
