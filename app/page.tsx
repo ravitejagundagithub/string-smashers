@@ -8,7 +8,7 @@ import React, { useState, useEffect, useRef } from 'react';
 const GOOGLE_SCRIPT_URL =
   'https://script.google.com/macros/s/AKfycbzeeTuljPY4YcOTWEfKJf29OLD0GonB4Nqy1NIi_9PzHPyapVz7M0PhVAFR4JkJJ6ywKg/exec';
 const GOOGLE_SHEET_URL =
-  'https://docs.google.com/spreadsheets/d/1NgKncI5wpD7TQWacV453eEVMnNU_kcpnzR14cD435X0/edit?gid=0#gid=0'; // Replace with your Google Sheet URL
+  'https://docs.google.com/spreadsheets/d/1O5R_vL4qP4gN_2XnZq1pT8m-Y1j5xZ9A/edit'; // Replace with your actual Google Sheet URL
 const ADMIN_PIN =
   'AKfycbzeeTuljPY4YcOTWEfKJf29OLD0GonB4Nqy1NIi_9PzHPyapVz7M0PhVAFR4JkJJ6ywKg';
 
@@ -494,11 +494,11 @@ export default function TournamentApp() {
         {/* Navigation Tabs */}
         <div className="flex flex-wrap justify-center gap-1.5 md:gap-3">
           {[
-            { id: 'group', label: '1. Group Stage' },
+            { id: 'group', label: '1. Group Stage Cards' },
             { id: 'qf', label: '2. Quarter-Finals' },
             { id: 'sf', label: '3. Semi-Finals' },
             { id: 'finals', label: '4. Finals' },
-            { id: 'schedule', label: '📅 Full Schedule' },
+            { id: 'schedule', label: '📅 Full Schedule Tables' },
             { id: 'standings', label: '📊 Standings & Tables' },
           ].map((tab) => (
             <button
@@ -1212,7 +1212,11 @@ function MatchCard({
 
   return (
     <div
-      ref={isNextMatch && activeRef ? activeRef : null}
+      ref={(node) => {
+        if (isNextMatch && activeRef) {
+          (activeRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+        }
+      }}
       className={`p-3.5 md:p-4 rounded-xl flex flex-col justify-between space-y-3 shadow-md transition-all duration-300 relative ${
         isNextMatch
           ? 'bg-slate-800 border-2 border-amber-400 ring-4 ring-amber-400/20 shadow-amber-500/10'
