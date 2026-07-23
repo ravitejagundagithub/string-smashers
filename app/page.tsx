@@ -54,7 +54,7 @@ const teamsB = [
 export default function TournamentApp() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [activeTab, setActiveTab] = useState<
-    'group' | 'qf' | 'sf' | 'finals' | 'standings'
+    'group' | 'qf' | 'sf' | 'finals' | 'schedule' | 'standings'
   >('group');
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
@@ -164,6 +164,19 @@ export default function TournamentApp() {
     }
   };
 
+  const areMatchesFinished = (matchIds: number[]) => {
+    return matchIds.every((id) => {
+      const m = matches.find((item) => item.id === id);
+      return m && m.s1 !== '' && m.s2 !== '' && m.s1 !== null && m.s2 !== null;
+    });
+  };
+
+  const isGroupStageComplete = areMatchesFinished([
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+  ]);
+  const isQFComplete = isGroupStageComplete && areMatchesFinished([21, 22]);
+  const isSFComplete = isQFComplete && areMatchesFinished([23, 24, 25, 26, 27, 28]);
+
   const getWinner = (
     matchId: number,
     fallbackTeam1: string,
@@ -254,13 +267,13 @@ export default function TournamentApp() {
                   })
                   .sort((a, b) => b.pts - a.pts || b.pd - a.pd || b.pf - a.pf);
 
-                const tA1 = curGroupAStats[0]?.team || 'A1';
-                const tA2 = curGroupAStats[1]?.team || 'A2';
-                const tA3 = curGroupAStats[2]?.team || 'A3';
+                const tA1 = curGroupAStats[0]?.team || 'TBD';
+                const tA2 = curGroupAStats[1]?.team || 'TBD';
+                const tA3 = curGroupAStats[2]?.team || 'TBD';
 
-                const tB1 = curGroupBStats[0]?.team || 'B1';
-                const tB2 = curGroupBStats[1]?.team || 'B2';
-                const tB3 = curGroupBStats[2]?.team || 'B3';
+                const tB1 = curGroupBStats[0]?.team || 'TBD';
+                const tB2 = curGroupBStats[1]?.team || 'TBD';
+                const tB3 = curGroupBStats[2]?.team || 'TBD';
 
                 const wQF1 = getWinner(21, tA2, tB3);
                 const wQF2 = getWinner(22, tB2, tA3);
@@ -313,25 +326,80 @@ export default function TournamentApp() {
   const groupAStats = getGroupStats(teamsA, 'A');
   const groupBStats = getGroupStats(teamsB, 'B');
 
-  const teamA1 = groupAStats[0]?.team || 'A1 (Group A #1)';
-  const teamA2 = groupAStats[1]?.team || 'A2 (Group A #2)';
-  const teamA3 = groupAStats[2]?.team || 'A3 (Group A #3)';
+  const teamA1 = isGroupStageComplete ? groupAStats[0]?.team || 'TBD' : 'TBD (Group A #1)';
+  const teamA2 = isGroupStageComplete ? groupAStats[1]?.team || 'TBD' : 'TBD (Group A #2)';
+  const teamA3 = isGroupStageComplete ? groupAStats[2]?.team || 'TBD' : 'TBD (Group A #3)';
 
-  const teamB1 = groupBStats[0]?.team || 'B1 (Group B #1)';
-  const teamB2 = groupBStats[1]?.team || 'B2 (Group B #2)';
-  const teamB3 = groupBStats[2]?.team || 'B3 (Group B #3)';
+  const teamB1 = isGroupStageComplete ? groupBStats[0]?.team || 'TBD' : 'TBD (Group B #1)';
+  const teamB2 = isGroupStageComplete ? groupBStats[1]?.team || 'TBD' : 'TBD (Group B #2)';
+  const teamB3 = isGroupStageComplete ? groupBStats[2]?.team || 'TBD' : 'TBD (Group B #3)';
 
-  const winnerQF1 = getWinner(21, teamA2, teamB3);
-  const winnerQF2 = getWinner(22, teamB2, teamA3);
+  const winnerQF1 = isQFComplete ? getWinner(21, teamA2, teamB3) : 'TBD (Winner QF1)';
+  const winnerQF2 = isQFComplete ? getWinner(22, teamB2, teamA3) : 'TBD (Winner QF2)';
 
   const sfTeams = [teamA1, teamB1, winnerQF1, winnerQF2];
   const sfStats = getGroupStats(sfTeams, 'SF');
-  const finalist1 = sfStats[0]?.team || 'SF Rank 1';
-  const finalist2 = sfStats[1]?.team || 'SF Rank 2';
+
+  const finalist1 = isSFComplete ? sfStats[0]?.team || 'TBD' : 'TBD (SF Rank 1)';
+  const finalist2 = isSFComplete ? sfStats[1]?.team || 'TBD' : 'TBD (SF Rank 2)';
 
   const nextActiveMatchId = matches.find(
     (m) => m.s1 === '' || m.s2 === '' || m.s1 === null || m.s2 === null
   )?.id;
+
+  const getResolvedMatchProps = (
+    m: Match
+  ): { team1: string; team2: string; court: number; stage: string; displayNum: number } => {
+    if (m.id <= 10) {
+      return {
+        team1: m.team1,
+        team2: m.team2,
+        court: 1,
+        stage: 'Group A',
+        displayNum: (m.id - 1) * 2 + 1,
+      };
+    }
+    if (m.id <= 20) {
+      return {
+        team1: m.team1,
+        team2: m.team2,
+        court: 2,
+        stage: 'Group B',
+        displayNum: (m.id - 11) * 2 + 2,
+      };
+    }
+    if (m.id === 21)
+      return { team1: teamA2, team2: teamB3, court: 1, stage: 'Quarter-Final 1', displayNum: 21 };
+    if (m.id === 22)
+      return { team1: teamB2, team2: teamA3, court: 2, stage: 'Quarter-Final 2', displayNum: 22 };
+    if (m.id === 23)
+      return { team1: teamA1, team2: teamB1, court: 1, stage: 'Semi-Final M1', displayNum: 23 };
+    if (m.id === 24)
+      return { team1: winnerQF1, team2: winnerQF2, court: 2, stage: 'Semi-Final M2', displayNum: 24 };
+    if (m.id === 25)
+      return { team1: teamA1, team2: winnerQF1, court: 1, stage: 'Semi-Final M3', displayNum: 25 };
+    if (m.id === 26)
+      return { team1: teamB1, team2: winnerQF2, court: 2, stage: 'Semi-Final M4', displayNum: 26 };
+    if (m.id === 27)
+      return { team1: teamA1, team2: winnerQF2, court: 1, stage: 'Semi-Final M5', displayNum: 27 };
+    if (m.id === 28)
+      return { team1: teamB1, team2: winnerQF1, court: 2, stage: 'Semi-Final M6', displayNum: 28 };
+    if (m.id >= 29)
+      return {
+        team1: finalist1,
+        team2: finalist2,
+        court: 1,
+        stage: `Final Game ${m.id - 28}`,
+        displayNum: m.id,
+      };
+    return {
+      team1: m.team1,
+      team2: m.team2,
+      court: 1,
+      stage: m.stage || 'Match',
+      displayNum: m.id,
+    };
+  };
 
   const groupAMatches = matches.filter((m) => m.group === 'A').sort((a, b) => a.id - b.id);
   const groupBMatches = matches.filter((m) => m.group === 'B').sort((a, b) => a.id - b.id);
@@ -353,6 +421,31 @@ export default function TournamentApp() {
       m2: court2Match,
     });
   }
+
+  // Filtered & Formatted Lists for Group A and Group B Schedule Tables
+  const groupAScheduleMatches = groupAMatches.map((m) => {
+    const resolved = getResolvedMatchProps(m);
+    return {
+      ...m,
+      team1: resolved.team1,
+      team2: resolved.team2,
+      court: resolved.court,
+      stage: resolved.stage,
+      displayNumber: resolved.displayNum,
+    };
+  });
+
+  const groupBScheduleMatches = groupBMatches.map((m) => {
+    const resolved = getResolvedMatchProps(m);
+    return {
+      ...m,
+      team1: resolved.team1,
+      team2: resolved.team2,
+      court: resolved.court,
+      stage: resolved.stage,
+      displayNumber: resolved.displayNum,
+    };
+  });
 
   return (
     <div className="bg-slate-900 text-slate-100 min-h-screen p-3 md:p-8 font-sans">
@@ -388,13 +481,14 @@ export default function TournamentApp() {
         </header>
 
         {/* Navigation Tabs */}
-        <div className="flex flex-wrap justify-center gap-1.5 md:gap-4">
+        <div className="flex flex-wrap justify-center gap-1.5 md:gap-3">
           {[
-            { id: 'group', label: '1. Group Stage' },
+            { id: 'group', label: '1. Group Stage Cards' },
             { id: 'qf', label: '2. Quarter-Finals' },
             { id: 'sf', label: '3. Semi-Finals' },
             { id: 'finals', label: '4. Finals' },
-            { id: 'standings', label: '📊 All Tables' },
+            { id: 'schedule', label: '📅 Full Schedule Tables' },
+            { id: 'standings', label: '📊 Standings & Tables' },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -412,16 +506,16 @@ export default function TournamentApp() {
 
         {loading && (
           <div className="text-center py-12 text-slate-400">
-            <p className="animate-pulse">Loading live tournament structure...</p>
+            <p className="animate-pulse">Loading live tournament schedule...</p>
           </div>
         )}
 
-        {/* TAB 1: GROUP STAGE */}
+        {/* TAB 1: GROUP STAGE CARDS */}
         {!loading && activeTab === 'group' && (
           <div className="space-y-6">
             <div className="bg-slate-800/80 p-4 rounded-xl border border-slate-700 flex flex-wrap justify-between items-center gap-2">
               <h2 className="text-xl md:text-2xl font-bold text-amber-400">
-                Group Stage
+                Group Stage Matches
               </h2>
               <span className="text-xs bg-amber-500/20 text-amber-300 px-3 py-1 rounded-full border border-amber-500/30 font-semibold">
                 Court 1 (Group A) ⚡ Court 2 (Group B)
@@ -484,9 +578,6 @@ export default function TournamentApp() {
                 </h2>
                 <p className="text-xs text-slate-400">Single game for 21 points</p>
               </div>
-              <span className="text-xs bg-amber-500/20 text-amber-300 px-3 py-1 rounded-full border border-amber-500/30 font-semibold">
-                Court 1 (QF 1) ⚡ Court 2 (QF 2)
-              </span>
             </div>
 
             <div className="bg-slate-950/60 p-3 md:p-4 rounded-2xl border border-slate-800 space-y-3">
@@ -619,7 +710,7 @@ export default function TournamentApp() {
                           team1: c1.t1,
                           team2: c1.t2,
                           s1: matchC1?.s1 ?? '',
-                          s2: matchC1?.s2 ?? '',
+                          s2: matchC2?.s2 ?? '',
                           u1: matchC1?.u1,
                           u2: matchC1?.u2,
                           u3: matchC1?.u3,
@@ -711,7 +802,52 @@ export default function TournamentApp() {
           </div>
         )}
 
-        {/* TAB 5: ALL TABLES (ORDER: FINALS -> SEMIS -> QF -> GROUP A -> GROUP B) */}
+        {/* TAB 5: SEPARATE GROUP A AND GROUP B SCHEDULE TABLES */}
+        {!loading && activeTab === 'schedule' && (
+          <div className="space-y-8">
+            {/* GROUP A SCHEDULE TABLE (COURT 1) */}
+            <div className="space-y-4">
+              <div className="bg-slate-800 p-4 rounded-xl border border-amber-500/30 flex flex-wrap justify-between items-center gap-2">
+                <div>
+                  <h2 className="text-xl md:text-2xl font-bold text-amber-400 flex items-center gap-2">
+                    <span>⚡</span> Group A Schedule (Court 1)
+                  </h2>
+                  <p className="text-xs text-slate-400">
+                    Matches #1, #3, #5, #7, #9, #11, #13, #15, #17, #19
+                  </p>
+                </div>
+              </div>
+
+              <ScheduleTable
+                matchList={groupAScheduleMatches}
+                nextActiveMatchId={nextActiveMatchId}
+                activeMatchRef={activeMatchRef}
+              />
+            </div>
+
+            {/* GROUP B SCHEDULE TABLE (COURT 2) */}
+            <div className="space-y-4">
+              <div className="bg-slate-800 p-4 rounded-xl border border-emerald-500/30 flex flex-wrap justify-between items-center gap-2">
+                <div>
+                  <h2 className="text-xl md:text-2xl font-bold text-emerald-400 flex items-center gap-2">
+                    <span>⚡</span> Group B Schedule (Court 2)
+                  </h2>
+                  <p className="text-xs text-slate-400">
+                    Matches #2, #4, #6, #8, #10, #12, #14, #16, #18, #20
+                  </p>
+                </div>
+              </div>
+
+              <ScheduleTable
+                matchList={groupBScheduleMatches}
+                nextActiveMatchId={nextActiveMatchId}
+                activeMatchRef={activeMatchRef}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* TAB 6: ALL TABLES */}
         {!loading && activeTab === 'standings' && (
           <div className="space-y-8">
             {/* 1. FINALS OUTCOME TABLE */}
@@ -774,7 +910,7 @@ export default function TournamentApp() {
                                 <td className="p-2 text-center font-mono text-slate-200 whitespace-nowrap">
                                   {m?.s1 !== '' && m?.s1 !== undefined
                                     ? `${m.s1} - ${m.s2}`
-                                    : '—'}
+                                    : '0 - 0'}
                                 </td>
                                 <td
                                   className={`p-2 text-right font-bold whitespace-nowrap ${
@@ -865,7 +1001,7 @@ export default function TournamentApp() {
                             <td className="p-2 text-center font-mono text-slate-200 whitespace-nowrap">
                               {m21?.s1 !== '' && m21?.s1 !== undefined
                                 ? `${m21.s1} - ${m21.s2}`
-                                : 'Pending'}
+                                : '0 - 0'}
                             </td>
                             <td className="p-2 font-bold text-amber-400 whitespace-nowrap">
                               {winnerQF1}
@@ -881,7 +1017,7 @@ export default function TournamentApp() {
                             <td className="p-2 text-center font-mono text-slate-200 whitespace-nowrap">
                               {m22?.s1 !== '' && m22?.s1 !== undefined
                                 ? `${m22.s1} - ${m22.s2}`
-                                : 'Pending'}
+                                : '0 - 0'}
                             </td>
                             <td className="p-2 font-bold text-amber-400 whitespace-nowrap">
                               {winnerQF2}
@@ -916,8 +1052,119 @@ export default function TournamentApp() {
 }
 
 // -------------------------------------------------------------
-// REUSABLE MATCH CARD & TABLE COMPONENTS (MOBILE RESPONSIVE FIXED)
+// REUSABLE COMPONENTS
 // -------------------------------------------------------------
+interface ScheduleTableProps {
+  matchList: Match[];
+  nextActiveMatchId?: number;
+  activeMatchRef: React.Ref<HTMLTableRowElement> | null;
+}
+
+function ScheduleTable({
+  matchList,
+  nextActiveMatchId,
+  activeMatchRef,
+}: ScheduleTableProps) {
+  return (
+    <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-x-auto">
+      <table className="w-full text-left text-xs md:text-sm border-collapse">
+        <thead>
+          <tr className="bg-slate-900/80 border-b border-slate-700 text-slate-400 font-bold uppercase text-[11px] tracking-wider">
+            <th className="p-3 text-center">Match #</th>
+            <th className="p-3">Stage</th>
+            <th className="p-3 text-center">Court</th>
+            <th className="p-3">Team 1</th>
+            <th className="p-3 text-center">Score</th>
+            <th className="p-3">Team 2</th>
+            <th className="p-3 text-amber-400">Umpire 1 (Mid)</th>
+            <th className="p-3 text-emerald-400">Umpire 2 (Wall)</th>
+            <th className="p-3 text-sky-400">Umpire 3 (Opp)</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-700/60 font-medium">
+          {matchList.map((m) => {
+            const isCurrent = m.id === nextActiveMatchId;
+            const s1 = m.s1 !== '' && m.s1 !== null ? Number(m.s1) : null;
+            const s2 = m.s2 !== '' && m.s2 !== null ? Number(m.s2) : null;
+            const hasScore = s1 !== null && s2 !== null;
+
+            return (
+              <tr
+                key={m.id}
+                ref={isCurrent ? activeMatchRef : null}
+                className={`transition-colors hover:bg-slate-700/40 ${
+                  isCurrent
+                    ? 'bg-amber-500/10 font-bold border-l-4 border-l-amber-400'
+                    : 'bg-slate-800'
+                }`}
+              >
+                {/* Match Display Number */}
+                <td className="p-3 text-center font-mono font-bold text-amber-400 whitespace-nowrap">
+                  #{m.displayNumber ?? m.id}
+                </td>
+
+                {/* Stage */}
+                <td className="p-3 text-slate-300 whitespace-nowrap">
+                  {m.stage}
+                </td>
+
+                {/* Court */}
+                <td className="p-3 text-center whitespace-nowrap">
+                  <span className="bg-slate-700 text-slate-200 px-2 py-0.5 rounded text-[10px] font-bold">
+                    Court {m.court}
+                  </span>
+                </td>
+
+                {/* Team 1 */}
+                <td
+                  className={`p-3 whitespace-nowrap ${
+                    hasScore && s1 > s2
+                      ? 'text-emerald-400 font-extrabold'
+                      : 'text-slate-100'
+                  }`}
+                >
+                  {m.team1}
+                </td>
+
+                {/* Score */}
+                <td className="p-3 text-center font-mono font-bold text-slate-200 whitespace-nowrap">
+                  {hasScore ? `${s1} - ${s2}` : '0 - 0'}
+                </td>
+
+                {/* Team 2 */}
+                <td
+                  className={`p-3 whitespace-nowrap ${
+                    hasScore && s2 > s1
+                      ? 'text-emerald-400 font-extrabold'
+                      : 'text-slate-100'
+                  }`}
+                >
+                  {m.team2}
+                </td>
+
+                {/* Umpire 1 */}
+                <td className="p-3 text-amber-300/90 whitespace-nowrap">
+                  {m.u1 || '—'}
+                </td>
+
+                {/* Umpire 2 */}
+                <td className="p-3 text-emerald-300/90 whitespace-nowrap">
+                  {m.u2 || '—'}
+                </td>
+
+                {/* Umpire 3 */}
+                <td className="p-3 text-sky-300/90 whitespace-nowrap">
+                  {m.u3 || '—'}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 interface MatchCardProps {
   match: Match;
   isNextMatch?: boolean;
@@ -978,7 +1225,7 @@ function MatchCard({
         </span>
       </div>
 
-      {/* Teams & Scores Layout - Clean Mobile Responsive Stack */}
+      {/* Teams & Scores Layout */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-2 py-1">
         {/* TEAM 1 */}
         <div className="flex items-center justify-center sm:justify-end gap-1.5 w-full sm:w-2/5 text-center sm:text-right">
