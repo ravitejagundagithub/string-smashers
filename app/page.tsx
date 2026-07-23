@@ -8,7 +8,7 @@ import React, { useState, useEffect, useRef } from 'react';
 const GOOGLE_SCRIPT_URL =
   'https://script.google.com/macros/s/AKfycbzeeTuljPY4YcOTWEfKJf29OLD0GonB4Nqy1NIi_9PzHPyapVz7M0PhVAFR4JkJJ6ywKg/exec';
 const GOOGLE_SHEET_URL =
-  'https://docs.google.com/spreadsheets/d/1O5R_vL4qP4gN_2XnZq1pT8m-Y1j5xZ9A/edit'; // Replace with your actual Google Sheet URL
+  'https://docs.google.com/spreadsheets/d/1NgKncI5wpD7TQWacV453eEVMnNU_kcpnzR14cD435X0/edit?usp=sharing'; // Replace with your actual Google Sheet URL
 const ADMIN_PIN =
   'AKfycbzeeTuljPY4YcOTWEfKJf29OLD0GonB4Nqy1NIi_9PzHPyapVz7M0PhVAFR4JkJJ6ywKg';
 
