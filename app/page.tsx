@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 // -------------------------------------------------------------
 // 1. CONFIGURATION: Web App URL & Secret PIN
@@ -12,6 +12,7 @@ const ADMIN_PIN =
 
 interface Match {
   id: number;
+  displayNumber?: number; // Visual override for sequential Session numbers
   group: 'A' | 'B' | 'Knockout' | 'SF' | 'Final';
   stage?: string;
   team1: string;
@@ -59,6 +60,8 @@ export default function TournamentApp() {
   const [loading, setLoading] = useState<boolean>(true);
   const [savingId, setSavingId] = useState<number | null>(null);
 
+  const activeMatchRef = useRef<HTMLDivElement | null>(null);
+
   const fetchMatches = async () => {
     try {
       setLoading(true);
@@ -73,7 +76,26 @@ export default function TournamentApp() {
           u2: m.u2 ?? m['Umpire-2 Near Wall'] ?? m['Umpire 2'] ?? '',
           u3: m.u3 ?? m['Umpire-3 Opposite Side'] ?? m['Umpire 3'] ?? '',
         }));
+
         setMatches(formattedData);
+
+        // Find the first unplayed match (Next Active Match)
+        const activeMatch = formattedData.find(
+          (m: Match) =>
+            m.s1 === '' || m.s2 === '' || m.s1 === null || m.s2 === null
+        );
+
+        if (activeMatch) {
+          if (activeMatch.group === 'A' || activeMatch.group === 'B') {
+            setActiveTab('group');
+          } else if (activeMatch.group === 'Knockout') {
+            setActiveTab('qf');
+          } else if (activeMatch.group === 'SF' || (activeMatch.group as any) === 'SF Round-Robin') {
+            setActiveTab('sf');
+          } else if (activeMatch.group === 'Final') {
+            setActiveTab('finals');
+          }
+        }
       }
     } catch (err) {
       console.error('Error fetching matches:', err);
@@ -87,6 +109,18 @@ export default function TournamentApp() {
       fetchMatches();
     }
   }, []);
+
+  // Scroll active match into view after render
+  useEffect(() => {
+    if (!loading && activeMatchRef.current) {
+      setTimeout(() => {
+        activeMatchRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        });
+      }, 300);
+    }
+  }, [loading, activeTab]);
 
   const handleAdminToggle = () => {
     if (isAdmin) {
@@ -294,7 +328,12 @@ export default function TournamentApp() {
   const finalist1 = sfStats[0]?.team || 'SF Rank 1';
   const finalist2 = sfStats[1]?.team || 'SF Rank 2';
 
-  // Pair Court 1 (Group A) and Court 2 (Group B) matches side-by-side
+  // Identify first pending match ID globally
+  const nextActiveMatchId = matches.find(
+    (m) => m.s1 === '' || m.s2 === '' || m.s1 === null || m.s2 === null
+  )?.id;
+
+  // Pair Group A (Court 1) and Group B (Court 2) side-by-side
   const groupAMatches = matches.filter((m) => m.group === 'A').sort((a, b) => a.id - b.id);
   const groupBMatches = matches.filter((m) => m.group === 'B').sort((a, b) => a.id - b.id);
 
@@ -302,10 +341,17 @@ export default function TournamentApp() {
   const parallelGroupMatches: { m1?: Match; m2?: Match; slot: number }[] = [];
 
   for (let i = 0; i < maxLen; i++) {
+    const court1Match = groupAMatches[i]
+      ? { ...groupAMatches[i], displayNumber: i * 2 + 1 }
+      : undefined;
+    const court2Match = groupBMatches[i]
+      ? { ...groupBMatches[i], displayNumber: i * 2 + 2 }
+      : undefined;
+
     parallelGroupMatches.push({
       slot: i + 1,
-      m1: groupAMatches[i], // Court 1: Group A Match (Matches #1-#10)
-      m2: groupBMatches[i], // Court 2: Group B Match (Matches #11-#20)
+      m1: court1Match,
+      m2: court2Match,
     });
   }
 
@@ -318,7 +364,7 @@ export default function TournamentApp() {
               STRING SMASHERS 2026
             </h1>
             <p className="text-slate-400 text-sm">
-              Live Tournament System (2 Courts Parallel Schedule)
+              Live Badminton Tournament System
             </p>
           </div>
 
@@ -342,12 +388,12 @@ export default function TournamentApp() {
           </div>
         </header>
 
-        {/* Navigation Tabs */}
+        {/* Cleaned Navigation Tabs without "Parallel Courts" text */}
         <div className="flex flex-wrap justify-center gap-2 md:gap-4">
           {[
-            { id: 'group', label: '1. Group Stage (Parallel Courts)' },
+            { id: 'group', label: '1. Group Stage' },
             { id: 'qf', label: '2. Quarter-Finals' },
-            { id: 'sf', label: '3. Semi-Finals (RR)' },
+            { id: 'sf', label: '3. Semi-Finals' },
             { id: 'finals', label: '4. Finals (Best of 3)' },
             { id: 'standings', label: '📊 All Tables' },
           ].map((tab) => (
@@ -371,13 +417,11 @@ export default function TournamentApp() {
           </div>
         )}
 
-        {/* TAB 1: GROUP STAGE (PARALLEL COURTS) */}
+        {/* TAB 1: GROUP STAGE */}
         {!loading && activeTab === 'group' && (
           <div className="space-y-6">
             <div className="bg-slate-800/80 p-4 rounded-xl border border-slate-700 flex flex-wrap justify-between items-center gap-2">
-              <h2 className="text-2xl font-bold text-amber-400">
-                Group Stage — Parallel Schedule (2 Courts)
-              </h2>
+              <h2 className="text-2xl font-bold text-amber-400">Group Stage</h2>
               <span className="text-xs bg-amber-500/20 text-amber-300 px-3 py-1 rounded-full border border-amber-500/30 font-semibold">
                 Court 1 (Group A) ⚡ Court 2 (Group B)
               </span>
@@ -393,9 +437,6 @@ export default function TournamentApp() {
                     <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">
                       Match Session #{slot}
                     </span>
-                    <span className="text-xs text-slate-500 font-medium">
-                      Simultaneous Execution
-                    </span>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -403,6 +444,8 @@ export default function TournamentApp() {
                     {m1 && (
                       <MatchCard
                         match={{ ...m1, court: 1 }}
+                        isNextMatch={m1.id === nextActiveMatchId}
+                        activeRef={m1.id === nextActiveMatchId ? activeMatchRef : null}
                         isAdmin={isAdmin}
                         savingId={savingId}
                         onChange={handleScoreChange}
@@ -414,6 +457,8 @@ export default function TournamentApp() {
                     {m2 && (
                       <MatchCard
                         match={{ ...m2, court: 2 }}
+                        isNextMatch={m2.id === nextActiveMatchId}
+                        activeRef={m2.id === nextActiveMatchId ? activeMatchRef : null}
                         isAdmin={isAdmin}
                         savingId={savingId}
                         onChange={handleScoreChange}
@@ -429,120 +474,183 @@ export default function TournamentApp() {
 
         {/* TAB 2: QUARTER-FINALS */}
         {!loading && activeTab === 'qf' && (
-          <div className="space-y-6 max-w-3xl mx-auto">
-            <div className="bg-slate-800 p-4 rounded-xl border border-slate-700">
-              <h2 className="text-2xl font-bold text-amber-400">
-                Quarter-Finals (QF)
-              </h2>
-              <p className="text-xs text-slate-400">Single game for 21 points</p>
+          <div className="space-y-6">
+            <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-wrap justify-between items-center gap-2">
+              <div>
+                <h2 className="text-2xl font-bold text-amber-400">Quarter-Finals (QF)</h2>
+                <p className="text-xs text-slate-400">Single game for 21 points</p>
+              </div>
+              <span className="text-xs bg-amber-500/20 text-amber-300 px-3 py-1 rounded-full border border-amber-500/30 font-semibold">
+                Court 1 (QF 1) ⚡ Court 2 (QF 2)
+              </span>
             </div>
 
-            <div className="space-y-4">
-              <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-2">
-                <span className="text-xs font-bold text-amber-400">
-                  QF 1: Group A #2 ({teamA2}) vs Group B #3 ({teamB3})
-                </span>
-                {(() => {
-                  const m21 = matches.find((m) => m.id === 21);
-                  return (
-                    <MatchCard
-                      match={{
-                        id: 21,
-                        group: 'Knockout',
-                        s1: m21?.s1 ?? '',
-                        s2: m21?.s2 ?? '',
-                        team1: teamA2,
-                        team2: teamB3,
-                        u1: m21?.u1,
-                        u2: m21?.u2,
-                        u3: m21?.u3,
-                      }}
-                      isAdmin={isAdmin}
-                      savingId={savingId}
-                      onChange={handleScoreChange}
-                      onSave={saveScoreToSheet}
-                    />
-                  );
-                })()}
-              </div>
+            <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <span className="text-xs font-bold text-amber-400 block mb-2">
+                    QF 1: Group A #2 vs Group B #3
+                  </span>
+                  {(() => {
+                    const m21 = matches.find((m) => m.id === 21);
+                    return (
+                      <MatchCard
+                        match={{
+                          id: 21,
+                          group: 'Knockout',
+                          stage: 'Quarter-Final 1',
+                          court: 1,
+                          s1: m21?.s1 ?? '',
+                          s2: m21?.s2 ?? '',
+                          team1: teamA2,
+                          team2: teamB3,
+                          u1: m21?.u1,
+                          u2: m21?.u2,
+                          u3: m21?.u3,
+                        }}
+                        isNextMatch={21 === nextActiveMatchId}
+                        activeRef={21 === nextActiveMatchId ? activeMatchRef : null}
+                        isAdmin={isAdmin}
+                        savingId={savingId}
+                        onChange={handleScoreChange}
+                        onSave={saveScoreToSheet}
+                      />
+                    );
+                  })()}
+                </div>
 
-              <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-2">
-                <span className="text-xs font-bold text-amber-400">
-                  QF 2: Group B #2 ({teamB2}) vs Group A #3 ({teamA3})
-                </span>
-                {(() => {
-                  const m22 = matches.find((m) => m.id === 22);
-                  return (
-                    <MatchCard
-                      match={{
-                        id: 22,
-                        group: 'Knockout',
-                        s1: m22?.s1 ?? '',
-                        s2: m22?.s2 ?? '',
-                        team1: teamB2,
-                        team2: teamA3,
-                        u1: m22?.u1,
-                        u2: m22?.u2,
-                        u3: m22?.u3,
-                      }}
-                      isAdmin={isAdmin}
-                      savingId={savingId}
-                      onChange={handleScoreChange}
-                      onSave={saveScoreToSheet}
-                    />
-                  );
-                })()}
+                <div>
+                  <span className="text-xs font-bold text-amber-400 block mb-2">
+                    QF 2: Group B #2 vs Group A #3
+                  </span>
+                  {(() => {
+                    const m22 = matches.find((m) => m.id === 22);
+                    return (
+                      <MatchCard
+                        match={{
+                          id: 22,
+                          group: 'Knockout',
+                          stage: 'Quarter-Final 2',
+                          court: 2,
+                          s1: m22?.s1 ?? '',
+                          s2: m22?.s2 ?? '',
+                          team1: teamB2,
+                          team2: teamA3,
+                          u1: m22?.u1,
+                          u2: m22?.u2,
+                          u3: m22?.u3,
+                        }}
+                        isNextMatch={22 === nextActiveMatchId}
+                        activeRef={22 === nextActiveMatchId ? activeMatchRef : null}
+                        isAdmin={isAdmin}
+                        savingId={savingId}
+                        onChange={handleScoreChange}
+                        onSave={saveScoreToSheet}
+                      />
+                    );
+                  })()}
+                </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* TAB 3: SEMI-FINALS ROUND ROBIN */}
+        {/* TAB 3: SEMI-FINALS */}
         {!loading && activeTab === 'sf' && (
           <div className="space-y-6">
-            <div className="bg-slate-800 p-6 rounded-xl border border-slate-700">
-              <h2 className="text-2xl font-bold text-amber-400">
-                Semi-Finals: 4-Team Round-Robin
-              </h2>
-              <p className="text-xs text-slate-400 mt-1">
-                Qualified:{' '}
-                <span className="text-amber-300 font-semibold">{teamA1}</span>,{' '}
-                <span className="text-amber-300 font-semibold">{teamB1}</span>,{' '}
-                <span className="text-amber-300 font-semibold">{winnerQF1}</span>,{' '}
-                <span className="text-amber-300 font-semibold">{winnerQF2}</span>
-              </p>
+            <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 flex flex-wrap justify-between items-center gap-2">
+              <div>
+                <h2 className="text-2xl font-bold text-amber-400">
+                  Semi-Finals: 4-Team Round-Robin
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  Qualified:{' '}
+                  <span className="text-amber-300 font-semibold">{teamA1}</span>,{' '}
+                  <span className="text-amber-300 font-semibold">{teamB1}</span>,{' '}
+                  <span className="text-amber-300 font-semibold">{winnerQF1}</span>,{' '}
+                  <span className="text-amber-300 font-semibold">{winnerQF2}</span>
+                </p>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-6">
               {[
-                { id: 23, t1: teamA1, t2: teamB1, name: 'Semi-Final M1' },
-                { id: 24, t1: winnerQF1, t2: winnerQF2, name: 'Semi-Final M2' },
-                { id: 25, t1: teamA1, t2: winnerQF1, name: 'Semi-Final M3' },
-                { id: 26, t1: teamB1, t2: winnerQF2, name: 'Semi-Final M4' },
-                { id: 27, t1: teamA1, t2: winnerQF2, name: 'Semi-Final M5' },
-                { id: 28, t1: teamB1, t2: winnerQF1, name: 'Semi-Final M6' },
-              ].map((sf) => {
-                const match = matches.find((m) => m.id === sf.id);
+                {
+                  session: 1,
+                  c1: { id: 23, t1: teamA1, t2: teamB1, name: 'Semi-Final M1' },
+                  c2: { id: 24, t1: winnerQF1, t2: winnerQF2, name: 'Semi-Final M2' },
+                },
+                {
+                  session: 2,
+                  c1: { id: 25, t1: teamA1, t2: winnerQF1, name: 'Semi-Final M3' },
+                  c2: { id: 26, t1: teamB1, t2: winnerQF2, name: 'Semi-Final M4' },
+                },
+                {
+                  session: 3,
+                  c1: { id: 27, t1: teamA1, t2: winnerQF2, name: 'Semi-Final M5' },
+                  c2: { id: 28, t1: teamB1, t2: winnerQF1, name: 'Semi-Final M6' },
+                },
+              ].map(({ session, c1, c2 }) => {
+                const matchC1 = matches.find((m) => m.id === c1.id);
+                const matchC2 = matches.find((m) => m.id === c2.id);
+
                 return (
-                  <MatchCard
-                    key={sf.id}
-                    match={{
-                      id: sf.id,
-                      group: 'SF',
-                      stage: sf.name,
-                      team1: sf.t1,
-                      team2: sf.t2,
-                      s1: match?.s1 ?? '',
-                      s2: match?.s2 ?? '',
-                      u1: match?.u1,
-                      u2: match?.u2,
-                      u3: match?.u3,
-                    }}
-                    isAdmin={isAdmin}
-                    savingId={savingId}
-                    onChange={handleScoreChange}
-                    onSave={saveScoreToSheet}
-                  />
+                  <div
+                    key={session}
+                    className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-3"
+                  >
+                    <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                      <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">
+                        Semi-Final Session #{session}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <MatchCard
+                        match={{
+                          id: c1.id,
+                          group: 'SF',
+                          stage: c1.name,
+                          court: 1,
+                          team1: c1.t1,
+                          team2: c1.t2,
+                          s1: matchC1?.s1 ?? '',
+                          s2: matchC1?.s2 ?? '',
+                          u1: matchC1?.u1,
+                          u2: matchC1?.u2,
+                          u3: matchC1?.u3,
+                        }}
+                        isNextMatch={c1.id === nextActiveMatchId}
+                        activeRef={c1.id === nextActiveMatchId ? activeMatchRef : null}
+                        isAdmin={isAdmin}
+                        savingId={savingId}
+                        onChange={handleScoreChange}
+                        onSave={saveScoreToSheet}
+                      />
+
+                      <MatchCard
+                        match={{
+                          id: c2.id,
+                          group: 'SF',
+                          stage: c2.name,
+                          court: 2,
+                          team1: c2.t1,
+                          team2: c2.t2,
+                          s1: matchC2?.s1 ?? '',
+                          s2: matchC2?.s2 ?? '',
+                          u1: matchC2?.u1,
+                          u2: matchC2?.u2,
+                          u3: matchC2?.u3,
+                        }}
+                        isNextMatch={c2.id === nextActiveMatchId}
+                        activeRef={c2.id === nextActiveMatchId ? activeMatchRef : null}
+                        isAdmin={isAdmin}
+                        savingId={savingId}
+                        onChange={handleScoreChange}
+                        onSave={saveScoreToSheet}
+                      />
+                    </div>
+                  </div>
                 );
               })}
             </div>
@@ -567,6 +675,7 @@ export default function TournamentApp() {
                   id,
                   group: 'Final',
                   stage: rawMatch?.stage || `Final Game ${index + 1}`,
+                  court: 1,
                   team1: finalist1,
                   team2: finalist2,
                   s1: rawMatch?.s1 ?? '',
@@ -580,11 +689,10 @@ export default function TournamentApp() {
                     key={id}
                     className="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-2"
                   >
-                    <span className="text-xs font-bold text-amber-400">
-                      Game {index + 1}
-                    </span>
                     <MatchCard
                       match={match}
+                      isNextMatch={id === nextActiveMatchId}
+                      activeRef={id === nextActiveMatchId ? activeMatchRef : null}
                       isAdmin={isAdmin}
                       savingId={savingId}
                       onChange={handleScoreChange}
@@ -600,7 +708,6 @@ export default function TournamentApp() {
         {/* TAB 5: STANDINGS TABLES */}
         {!loading && activeTab === 'standings' && (
           <div className="space-y-8">
-            {/* Grand Final Summary Table */}
             <div className="bg-slate-800 rounded-xl border border-amber-500/40 p-6 space-y-4">
               <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-bold text-amber-400 flex items-center gap-2">
@@ -694,86 +801,6 @@ export default function TournamentApp() {
               </div>
             </div>
 
-            {/* Quarter-Finals Outcome Summary Table */}
-            <div className="bg-slate-800 rounded-xl border border-slate-700 p-6 space-y-4">
-              <h2 className="text-2xl font-bold text-amber-400">
-                Quarter-Finals Outcome
-              </h2>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-700 text-slate-400 text-xs">
-                      <th className="p-2">Match</th>
-                      <th className="p-2">Matchup</th>
-                      <th className="p-2 text-center">Score</th>
-                      <th className="p-2 font-bold text-amber-400">QF Winner</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(() => {
-                      const m21 = matches.find((m) => m.id === 21);
-                      const m22 = matches.find((m) => m.id === 22);
-
-                      const qf1Team1 =
-                        m21?.team1 && !m21.team1.includes('Group')
-                          ? m21.team1
-                          : teamA2;
-                      const qf1Team2 =
-                        m21?.team2 && !m21.team2.includes('Group')
-                          ? m21.team2
-                          : teamB3;
-
-                      const qf2Team1 =
-                        m22?.team1 && !m22.team1.includes('Group')
-                          ? m22.team1
-                          : teamB2;
-                      const qf2Team2 =
-                        m22?.team2 && !m22.team2.includes('Group')
-                          ? m22.team2
-                          : teamA3;
-
-                      return (
-                        <>
-                          <tr className="border-b border-slate-700/50">
-                            <td className="p-2 font-semibold text-slate-400">
-                              QF 1 (Match #21)
-                            </td>
-                            <td className="p-2 text-slate-300">
-                              {qf1Team1} vs {qf1Team2}
-                            </td>
-                            <td className="p-2 text-center font-mono text-slate-200">
-                              {m21?.s1 !== '' && m21?.s1 !== undefined
-                                ? `${m21.s1} - ${m21.s2}`
-                                : 'Pending'}
-                            </td>
-                            <td className="p-2 font-bold text-amber-400">
-                              {winnerQF1}
-                            </td>
-                          </tr>
-                          <tr className="border-b border-slate-700/50">
-                            <td className="p-2 font-semibold text-slate-400">
-                              QF 2 (Match #22)
-                            </td>
-                            <td className="p-2 text-slate-300">
-                              {qf2Team1} vs {qf2Team2}
-                            </td>
-                            <td className="p-2 text-center font-mono text-slate-200">
-                              {m22?.s1 !== '' && m22?.s1 !== undefined
-                                ? `${m22.s1} - ${m22.s2}`
-                                : 'Pending'}
-                            </td>
-                            <td className="p-2 font-bold text-amber-400">
-                              {winnerQF2}
-                            </td>
-                          </tr>
-                        </>
-                      );
-                    })()}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
             <StandingsTable
               title="Group A Standings"
               stats={groupAStats}
@@ -801,6 +828,8 @@ export default function TournamentApp() {
 // -------------------------------------------------------------
 interface MatchCardProps {
   match: Match;
+  isNextMatch?: boolean;
+  activeRef?: React.Ref<HTMLDivElement> | null;
   isAdmin: boolean;
   savingId: number | null;
   onChange: (id: number, teamNum: 1 | 2, val: string) => void;
@@ -809,6 +838,8 @@ interface MatchCardProps {
 
 function MatchCard({
   match,
+  isNextMatch,
+  activeRef,
   isAdmin,
   savingId,
   onChange,
@@ -816,8 +847,30 @@ function MatchCard({
 }: MatchCardProps) {
   const hasUmpires = match.u1 || match.u2 || match.u3;
 
+  const score1 = match.s1 !== '' && match.s1 !== null ? Number(match.s1) : null;
+  const score2 = match.s2 !== '' && match.s2 !== null ? Number(match.s2) : null;
+
+  const isPlayed = score1 !== null && score2 !== null;
+  const isTeam1Winner = isPlayed && score1 > score2;
+  const isTeam2Winner = isPlayed && score2 > score1;
+
+  const displayNum = match.displayNumber ?? match.id;
+
   return (
-    <div className="bg-slate-800/90 p-4 rounded-xl border border-slate-700 flex flex-col justify-between space-y-3 shadow-md">
+    <div
+      ref={activeRef}
+      className={`p-4 rounded-xl flex flex-col justify-between space-y-3 shadow-md transition-all duration-300 relative ${
+        isNextMatch
+          ? 'bg-slate-800 border-2 border-amber-400 ring-4 ring-amber-400/20 shadow-amber-500/10'
+          : 'bg-slate-800/90 border border-slate-700'
+      }`}
+    >
+      {isNextMatch && (
+        <span className="absolute -top-3 left-4 bg-amber-500 text-slate-950 font-extrabold text-[10px] px-2.5 py-0.5 rounded-full shadow tracking-wider uppercase animate-pulse">
+          ⚡ NEXT MATCHUP
+        </span>
+      )}
+
       <div className="flex justify-between items-center text-xs font-bold text-slate-400">
         <div className="flex items-center gap-2">
           {match.court && (
@@ -825,7 +878,7 @@ function MatchCard({
               Court {match.court}
             </span>
           )}
-          <span>Match #{match.id}</span>
+          <span>Match #{displayNum}</span>
         </div>
         <span className="text-slate-400 font-semibold">
           {match.stage || `Group ${match.group}`}
@@ -833,9 +886,18 @@ function MatchCard({
       </div>
 
       <div className="grid grid-cols-5 items-center gap-2">
-        <span className="col-span-2 text-right font-medium text-sm text-slate-200 truncate">
-          {match.team1}
-        </span>
+        <div className="col-span-2 flex items-center justify-end gap-1.5 truncate">
+          {isTeam1Winner && <span className="text-emerald-400 text-xs">✓</span>}
+          <span
+            className={`font-semibold text-sm truncate transition-colors ${
+              isTeam1Winner
+                ? 'text-emerald-400 font-extrabold drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]'
+                : 'text-slate-200'
+            }`}
+          >
+            {match.team1}
+          </span>
+        </div>
 
         <div className="flex justify-center gap-1">
           <input
@@ -845,7 +907,11 @@ function MatchCard({
             value={match.s1 ?? ''}
             onChange={(e) => onChange(match.id, 1, e.target.value)}
             onBlur={() => onSave(match)}
-            className="w-11 h-9 text-center bg-slate-900 border border-slate-700 text-amber-400 font-bold rounded"
+            className={`w-11 h-9 text-center border font-bold rounded text-sm transition-colors ${
+              isTeam1Winner
+                ? 'bg-emerald-950/80 border-emerald-500 text-emerald-400 ring-1 ring-emerald-500/50'
+                : 'bg-slate-900 border-slate-700 text-amber-400'
+            }`}
             placeholder="0"
           />
           <input
@@ -855,17 +921,29 @@ function MatchCard({
             value={match.s2 ?? ''}
             onChange={(e) => onChange(match.id, 2, e.target.value)}
             onBlur={() => onSave(match)}
-            className="w-11 h-9 text-center bg-slate-900 border border-slate-700 text-amber-400 font-bold rounded"
+            className={`w-11 h-9 text-center border font-bold rounded text-sm transition-colors ${
+              isTeam2Winner
+                ? 'bg-emerald-950/80 border-emerald-500 text-emerald-400 ring-1 ring-emerald-500/50'
+                : 'bg-slate-900 border-slate-700 text-amber-400'
+            }`}
             placeholder="0"
           />
         </div>
 
-        <span className="col-span-2 text-left font-medium text-sm text-slate-200 truncate">
-          {match.team2}
-        </span>
+        <div className="col-span-2 flex items-center justify-start gap-1.5 truncate">
+          <span
+            className={`font-semibold text-sm truncate transition-colors ${
+              isTeam2Winner
+                ? 'text-emerald-400 font-extrabold drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]'
+                : 'text-slate-200'
+            }`}
+          >
+            {match.team2}
+          </span>
+          {isTeam2Winner && <span className="text-emerald-400 text-xs">✓</span>}
+        </div>
       </div>
 
-      {/* UMPIRE ASSIGNMENT DISPLAY */}
       {hasUmpires && (
         <div className="mt-2 pt-2 border-t border-slate-700/60 flex flex-wrap justify-between gap-1 text-[11px] text-slate-400 bg-slate-900/50 p-2 rounded-lg">
           {match.u1 && (
