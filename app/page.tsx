@@ -69,7 +69,7 @@ export default function TournamentApp() {
   };
 
   useEffect(() => {
-    if (GOOGLE_SCRIPT_URL !== 'PASTE_YOUR_GOOGLE_WEB_APP_URL_HERE') {
+    if (GOOGLE_SCRIPT_URL !== GOOGLE_SCRIPT_URL) {
       fetchMatches();
     }
   }, []);
