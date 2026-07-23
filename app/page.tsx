@@ -487,7 +487,7 @@ export default function TournamentApp() {
             { id: 'qf', label: '2. Quarter-Finals' },
             { id: 'sf', label: '3. Semi-Finals' },
             { id: 'finals', label: '4. Finals' },
-            { id: 'schedule', label: '📅 Full Schedule Tables' },
+            { id: 'schedule', label: '📅 Full Schedule' },
             { id: 'standings', label: '📊 Standings & Tables' },
           ].map((tab) => (
             <button
