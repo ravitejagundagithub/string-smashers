@@ -483,7 +483,7 @@ export default function TournamentApp() {
         {/* Navigation Tabs */}
         <div className="flex flex-wrap justify-center gap-1.5 md:gap-3">
           {[
-            { id: 'group', label: '1. Group Stage Cards' },
+            { id: 'group', label: '1. Group Stage' },
             { id: 'qf', label: '2. Quarter-Finals' },
             { id: 'sf', label: '3. Semi-Finals' },
             { id: 'finals', label: '4. Finals' },
@@ -710,7 +710,7 @@ export default function TournamentApp() {
                           team1: c1.t1,
                           team2: c1.t2,
                           s1: matchC1?.s1 ?? '',
-                          s2: matchC2?.s2 ?? '',
+                          s2: matchC1?.s2 ?? '',
                           u1: matchC1?.u1,
                           u2: matchC1?.u2,
                           u3: matchC1?.u3,
@@ -1057,7 +1057,7 @@ export default function TournamentApp() {
 interface ScheduleTableProps {
   matchList: Match[];
   nextActiveMatchId?: number;
-  activeMatchRef: React.Ref<HTMLTableRowElement> | null;
+  activeMatchRef: React.Ref<HTMLTableRowElement | HTMLDivElement> | null;
 }
 
 function ScheduleTable({
