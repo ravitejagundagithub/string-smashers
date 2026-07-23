@@ -483,7 +483,7 @@ export default function TournamentApp() {
         {/* Navigation Tabs */}
         <div className="flex flex-wrap justify-center gap-1.5 md:gap-3">
           {[
-            { id: 'group', label: '1. Group Stage Cards' },
+            { id: 'group', label: '1. Group Stage' },
             { id: 'qf', label: '2. Quarter-Finals' },
             { id: 'sf', label: '3. Semi-Finals' },
             { id: 'finals', label: '4. Finals' },
@@ -510,7 +510,7 @@ export default function TournamentApp() {
           </div>
         )}
 
-        {/* TAB 1: GROUP STAGE CARDS */}
+        {/* TAB 1: GROUP STAGE */}
         {!loading && activeTab === 'group' && (
           <div className="space-y-6">
             <div className="bg-slate-800/80 p-4 rounded-xl border border-slate-700 flex flex-wrap justify-between items-center gap-2">
