@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 
 // -------------------------------------------------------------
-// 1. CONFIGURATION: Paste your Web App URL & Secret PIN here
+// 1. CONFIGURATION: Your Web App URL & Secret PIN
 // -------------------------------------------------------------
 const GOOGLE_SCRIPT_URL =
   'https://script.google.com/macros/s/AKfycbzeeTuljPY4YcOTWEfKJf29OLD0GonB4Nqy1NIi_9PzHPyapVz7M0PhVAFR4JkJJ6ywKg/exec';
@@ -60,7 +60,9 @@ export default function TournamentApp() {
       setLoading(true);
       const res = await fetch(GOOGLE_SCRIPT_URL);
       const data = await res.json();
-      setMatches(data);
+      if (Array.isArray(data)) {
+        setMatches(data);
+      }
     } catch (err) {
       console.error('Error fetching matches:', err);
     } finally {
@@ -69,7 +71,7 @@ export default function TournamentApp() {
   };
 
   useEffect(() => {
-    if (GOOGLE_SCRIPT_URL !== GOOGLE_SCRIPT_URL) {
+    if (GOOGLE_SCRIPT_URL && !GOOGLE_SCRIPT_URL.includes('YOUR_GOOGLE_APPS')) {
       fetchMatches();
     }
   }, []);
@@ -120,7 +122,7 @@ export default function TournamentApp() {
   // -------------------------------------------------------------
   const getGroupStats = (
     teamList: string[],
-    groupName: 'A' | 'B'
+    groupName: 'A' | 'B' | 'SF' | 'Knockout' | 'Final'
   ): TeamStats[] => {
     return teamList
       .map((team) => {
@@ -451,7 +453,21 @@ export default function TournamentApp() {
 // -------------------------------------------------------------
 // REUSABLE MATCH CARD & TABLE COMPONENTS
 // -------------------------------------------------------------
-function MatchCard({ match, isAdmin, savingId, onChange, onSave }: any) {
+interface MatchCardProps {
+  match: Match;
+  isAdmin: boolean;
+  savingId: number | null;
+  onChange: (id: number, teamNum: 1 | 2, val: string) => void;
+  onSave: (match: Match) => void;
+}
+
+function MatchCard({
+  match,
+  isAdmin,
+  savingId,
+  onChange,
+  onSave,
+}: MatchCardProps) {
   return (
     <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-col justify-between space-y-3">
       <div className="flex justify-between text-xs font-bold text-slate-400">
@@ -500,15 +516,13 @@ function MatchCard({ match, isAdmin, savingId, onChange, onSave }: any) {
   );
 }
 
-function StandingsTable({
-  title,
-  stats,
-  color,
-}: {
+interface StandingsTableProps {
   title: string;
   stats: TeamStats[];
   color: string;
-}) {
+}
+
+function StandingsTable({ title, stats, color }: StandingsTableProps) {
   return (
     <div className="bg-slate-800 rounded-xl border border-slate-700 p-6 space-y-4">
       <h2 className={`text-2xl font-bold ${color}`}>{title}</h2>
