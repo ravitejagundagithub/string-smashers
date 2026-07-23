@@ -3,10 +3,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 // -------------------------------------------------------------
-// 1. CONFIGURATION: Web App URL & Secret PIN
+// 1. CONFIGURATION: Web App URL, Google Sheet URL & Secret PIN
 // -------------------------------------------------------------
 const GOOGLE_SCRIPT_URL =
   'https://script.google.com/macros/s/AKfycbzeeTuljPY4YcOTWEfKJf29OLD0GonB4Nqy1NIi_9PzHPyapVz7M0PhVAFR4JkJJ6ywKg/exec';
+const GOOGLE_SHEET_URL =
+  'https://docs.google.com/spreadsheets/d/1NgKncI5wpD7TQWacV453eEVMnNU_kcpnzR14cD435X0/edit?gid=0#gid=0'; // Replace with your Google Sheet URL
 const ADMIN_PIN =
   'AKfycbzeeTuljPY4YcOTWEfKJf29OLD0GonB4Nqy1NIi_9PzHPyapVz7M0PhVAFR4JkJJ6ywKg';
 
@@ -460,16 +462,16 @@ export default function TournamentApp() {
             </p>
           </div>
 
-          <div className="flex gap-2 sm:gap-3">
+          <div className="flex gap-2 sm:gap-3 flex-wrap justify-center">
             <button
               onClick={fetchMatches}
-              className="px-3 py-1.5 md:px-4 md:py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs md:text-sm font-semibold border border-slate-600"
+              className="px-3 py-1.5 md:px-4 md:py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs md:text-sm font-semibold border border-slate-600 transition"
             >
               🔄 Sync
             </button>
             <button
               onClick={handleAdminToggle}
-              className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg font-semibold text-xs md:text-sm border ${
+              className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg font-semibold text-xs md:text-sm border transition ${
                 isAdmin
                   ? 'bg-rose-500/20 text-rose-300 border-rose-500'
                   : 'bg-slate-800 text-slate-300 border-slate-600'
@@ -477,6 +479,15 @@ export default function TournamentApp() {
             >
               {isAdmin ? '🔓 Admin Active' : '🔒 Admin Login'}
             </button>
+            <a
+              href={GOOGLE_SHEET_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-1.5 md:px-4 md:py-2 bg-emerald-800/40 hover:bg-emerald-700/60 text-emerald-300 rounded-lg text-xs md:text-sm font-semibold border border-emerald-600/60 transition flex items-center gap-1.5"
+            >
+              <span>📊</span>
+              <span>Sheet</span>
+            </a>
           </div>
         </header>
 
@@ -510,7 +521,7 @@ export default function TournamentApp() {
           </div>
         )}
 
-        {/* TAB 1: GROUP STAGE */}
+        {/* TAB 1: GROUP STAGE CARDS */}
         {!loading && activeTab === 'group' && (
           <div className="space-y-6">
             <div className="bg-slate-800/80 p-4 rounded-xl border border-slate-700 flex flex-wrap justify-between items-center gap-2">
@@ -1057,7 +1068,7 @@ export default function TournamentApp() {
 interface ScheduleTableProps {
   matchList: Match[];
   nextActiveMatchId?: number;
-  activeMatchRef: React.Ref<HTMLDivElement> | null;
+  activeMatchRef: React.RefObject<HTMLDivElement | null>;
 }
 
 function ScheduleTable({
@@ -1092,7 +1103,7 @@ function ScheduleTable({
               <tr
                 key={m.id}
                 ref={(node) => {
-                  if (isCurrent && activeMatchRef && 'current' in activeMatchRef) {
+                  if (isCurrent && activeMatchRef) {
                     (activeMatchRef as React.MutableRefObject<any>).current = node;
                   }
                 }}
@@ -1172,7 +1183,7 @@ function ScheduleTable({
 interface MatchCardProps {
   match: Match;
   isNextMatch?: boolean;
-  activeRef?: React.Ref<HTMLDivElement> | null;
+  activeRef?: React.RefObject<HTMLDivElement | null> | null;
   isAdmin: boolean;
   savingId: number | null;
   onChange: (id: number, teamNum: 1 | 2, val: string) => void;
@@ -1201,11 +1212,7 @@ function MatchCard({
 
   return (
     <div
-      ref={(node) => {
-        if (isNextMatch && activeRef && 'current' in activeRef) {
-          (activeRef as React.MutableRefObject<any>).current = node;
-        }
-      }}
+      ref={isNextMatch && activeRef ? activeRef : null}
       className={`p-3.5 md:p-4 rounded-xl flex flex-col justify-between space-y-3 shadow-md transition-all duration-300 relative ${
         isNextMatch
           ? 'bg-slate-800 border-2 border-amber-400 ring-4 ring-amber-400/20 shadow-amber-500/10'
