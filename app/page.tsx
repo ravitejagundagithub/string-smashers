@@ -483,7 +483,7 @@ export default function TournamentApp() {
         {/* Navigation Tabs */}
         <div className="flex flex-wrap justify-center gap-1.5 md:gap-3">
           {[
-            { id: 'group', label: '1. Group Stage' },
+            { id: 'group', label: '1. Group Stage Cards' },
             { id: 'qf', label: '2. Quarter-Finals' },
             { id: 'sf', label: '3. Semi-Finals' },
             { id: 'finals', label: '4. Finals' },
@@ -1057,7 +1057,7 @@ export default function TournamentApp() {
 interface ScheduleTableProps {
   matchList: Match[];
   nextActiveMatchId?: number;
-  activeMatchRef: React.Ref<HTMLTableRowElement | HTMLDivElement> | null;
+  activeMatchRef: React.RefObject<HTMLDivElement | null>;
 }
 
 function ScheduleTable({
@@ -1091,7 +1091,11 @@ function ScheduleTable({
             return (
               <tr
                 key={m.id}
-                ref={isCurrent ? activeMatchRef : null}
+                ref={(node) => {
+                  if (isCurrent && activeMatchRef) {
+                    (activeMatchRef as React.MutableRefObject<any>).current = node;
+                  }
+                }}
                 className={`transition-colors hover:bg-slate-700/40 ${
                   isCurrent
                     ? 'bg-amber-500/10 font-bold border-l-4 border-l-amber-400'
@@ -1168,7 +1172,7 @@ function ScheduleTable({
 interface MatchCardProps {
   match: Match;
   isNextMatch?: boolean;
-  activeRef?: React.Ref<HTMLDivElement> | null;
+  activeRef?: React.RefObject<HTMLDivElement | null> | null;
   isAdmin: boolean;
   savingId: number | null;
   onChange: (id: number, teamNum: 1 | 2, val: string) => void;
@@ -1197,7 +1201,7 @@ function MatchCard({
 
   return (
     <div
-      ref={activeRef}
+      ref={isNextMatch && activeRef ? activeRef : null}
       className={`p-3.5 md:p-4 rounded-xl flex flex-col justify-between space-y-3 shadow-md transition-all duration-300 relative ${
         isNextMatch
           ? 'bg-slate-800 border-2 border-amber-400 ring-4 ring-amber-400/20 shadow-amber-500/10'
