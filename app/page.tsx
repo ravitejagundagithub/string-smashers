@@ -3,12 +3,12 @@
 import React, { useState, useEffect } from 'react';
 
 // -------------------------------------------------------------
-// 1. CONFIGURATION: Your Web App URL & Secret PIN
+// 1. CONFIGURATION: Web App URL & Secret PIN
 // -------------------------------------------------------------
 const GOOGLE_SCRIPT_URL =
   'https://script.google.com/macros/s/AKfycbzeeTuljPY4YcOTWEfKJf29OLD0GonB4Nqy1NIi_9PzHPyapVz7M0PhVAFR4JkJJ6ywKg/exec';
 const ADMIN_PIN =
-  'AKfycbzeeTuljPY4YcOTWEfKJf29OLD0GonB4Nqy1NIi_9PzHPyapVz7M0PhVAFR4JkJJ6ywKg'; // Must match ADMIN_SECRET in Google Apps Script
+  'AKfycbzeeTuljPY4YcOTWEfKJf29OLD0GonB4Nqy1NIi_9PzHPyapVz7M0PhVAFR4JkJJ6ywKg';
 
 interface Match {
   id: number;
@@ -18,6 +18,10 @@ interface Match {
   team2: string;
   s1: number | '';
   s2: number | '';
+  u1?: string; // Umpire 1 (Mid Court)
+  u2?: string; // Umpire 2 (Near Wall)
+  u3?: string; // Umpire 3 (Opposite Side)
+  court?: number;
 }
 
 interface TeamStats {
@@ -61,11 +65,13 @@ export default function TournamentApp() {
       const res = await fetch(GOOGLE_SCRIPT_URL);
       const data = await res.json();
       if (Array.isArray(data)) {
-        // Map backend column names (Score 1 / Score 2) to frontend props (s1 / s2)
         const formattedData = data.map((m: any) => ({
           ...m,
           s1: m.s1 ?? m['Score 1'] ?? '',
           s2: m.s2 ?? m['Score 2'] ?? '',
+          u1: m.u1 ?? m['Umpire-1 - Mid court'] ?? m['Umpire 1'] ?? '',
+          u2: m.u2 ?? m['Umpire-2 Near Wall'] ?? m['Umpire 2'] ?? '',
+          u3: m.u3 ?? m['Umpire-3 Opposite Side'] ?? m['Umpire 3'] ?? '',
         }));
         setMatches(formattedData);
       }
@@ -123,9 +129,6 @@ export default function TournamentApp() {
     }
   };
 
-  // -------------------------------------------------------------
-  // DYNAMIC CALCULATIONS (Group Standings & Knockouts)
-  // -------------------------------------------------------------
   const getWinner = (
     matchId: number,
     fallbackTeam1: string,
@@ -135,7 +138,6 @@ export default function TournamentApp() {
     if (m && m.s1 !== '' && m.s2 !== '' && m.s1 !== null && m.s2 !== null) {
       const score1 = Number(m.s1);
       const score2 = Number(m.s2);
-
       const t1 = m.team1 && !m.team1.includes('Group') ? m.team1 : fallbackTeam1;
       const t2 = m.team2 && !m.team2.includes('Group') ? m.team2 : fallbackTeam2;
 
@@ -178,7 +180,6 @@ export default function TournamentApp() {
               let actualTeam1 = m.team1;
               let actualTeam2 = m.team2;
 
-              // Dynamically map teams for SF matches #23-#28
               if (m.id >= 23 && m.id <= 28) {
                 const curGroupAStats = teamsA
                   .map((t) => {
@@ -277,7 +278,6 @@ export default function TournamentApp() {
   const groupAStats = getGroupStats(teamsA, 'A');
   const groupBStats = getGroupStats(teamsB, 'B');
 
-  // Dynamic Knockout Resolution
   const teamA1 = groupAStats[0]?.team || 'A1 (Group A #1)';
   const teamA2 = groupAStats[1]?.team || 'A2 (Group A #2)';
   const teamA3 = groupAStats[2]?.team || 'A3 (Group A #3)';
@@ -289,24 +289,36 @@ export default function TournamentApp() {
   const winnerQF1 = getWinner(21, teamA2, teamB3);
   const winnerQF2 = getWinner(22, teamB2, teamA3);
 
-  // Semi-Final Round Robin Teams
   const sfTeams = [teamA1, teamB1, winnerQF1, winnerQF2];
-
   const sfStats = getGroupStats(sfTeams, 'SF');
   const finalist1 = sfStats[0]?.team || 'SF Rank 1';
   const finalist2 = sfStats[1]?.team || 'SF Rank 2';
 
+  // Pair Court 1 (Group A) and Court 2 (Group B) matches side-by-side
+  const groupAMatches = matches.filter((m) => m.group === 'A').sort((a, b) => a.id - b.id);
+  const groupBMatches = matches.filter((m) => m.group === 'B').sort((a, b) => a.id - b.id);
+
+  const maxLen = Math.max(groupAMatches.length, groupBMatches.length);
+  const parallelGroupMatches: { m1?: Match; m2?: Match; slot: number }[] = [];
+
+  for (let i = 0; i < maxLen; i++) {
+    parallelGroupMatches.push({
+      slot: i + 1,
+      m1: groupAMatches[i], // Court 1: Group A Match (Matches #1-#10)
+      m2: groupBMatches[i], // Court 2: Group B Match (Matches #11-#20)
+    });
+  }
+
   return (
     <div className="bg-slate-900 text-slate-100 min-h-screen p-4 md:p-8 font-sans">
       <div className="max-w-7xl mx-auto space-y-8">
-        {/* Header */}
         <header className="flex flex-col md:flex-row justify-between items-center border-b border-slate-700 pb-6 gap-4">
           <div>
             <h1 className="text-3xl md:text-4xl font-extrabold text-amber-400">
               STRING SMASHERS 2026
             </h1>
             <p className="text-slate-400 text-sm">
-              Live Tournament System (Google Sheets Integrated)
+              Live Tournament System (2 Courts Parallel Schedule)
             </p>
           </div>
 
@@ -333,7 +345,7 @@ export default function TournamentApp() {
         {/* Navigation Tabs */}
         <div className="flex flex-wrap justify-center gap-2 md:gap-4">
           {[
-            { id: 'group', label: '1. Group Stage' },
+            { id: 'group', label: '1. Group Stage (Parallel Courts)' },
             { id: 'qf', label: '2. Quarter-Finals' },
             { id: 'sf', label: '3. Semi-Finals (RR)' },
             { id: 'finals', label: '4. Finals (Best of 3)' },
@@ -355,31 +367,62 @@ export default function TournamentApp() {
 
         {loading && (
           <div className="text-center py-12 text-slate-400">
-            <p className="animate-pulse">
-              Loading live tournament structure...
-            </p>
+            <p className="animate-pulse">Loading live tournament structure...</p>
           </div>
         )}
 
-        {/* TAB 1: GROUP STAGE */}
+        {/* TAB 1: GROUP STAGE (PARALLEL COURTS) */}
         {!loading && activeTab === 'group' && (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-amber-400 border-b border-slate-700 pb-2">
-              Group Stage Matches (21 Points Each)
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {matches
-                .filter((m) => m.group === 'A' || m.group === 'B')
-                .map((m) => (
-                  <MatchCard
-                    key={m.id}
-                    match={m}
-                    isAdmin={isAdmin}
-                    savingId={savingId}
-                    onChange={handleScoreChange}
-                    onSave={saveScoreToSheet}
-                  />
-                ))}
+            <div className="bg-slate-800/80 p-4 rounded-xl border border-slate-700 flex flex-wrap justify-between items-center gap-2">
+              <h2 className="text-2xl font-bold text-amber-400">
+                Group Stage — Parallel Schedule (2 Courts)
+              </h2>
+              <span className="text-xs bg-amber-500/20 text-amber-300 px-3 py-1 rounded-full border border-amber-500/30 font-semibold">
+                Court 1 (Group A) ⚡ Court 2 (Group B)
+              </span>
+            </div>
+
+            <div className="space-y-6">
+              {parallelGroupMatches.map(({ slot, m1, m2 }) => (
+                <div
+                  key={slot}
+                  className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-3"
+                >
+                  <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                    <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">
+                      Match Session #{slot}
+                    </span>
+                    <span className="text-xs text-slate-500 font-medium">
+                      Simultaneous Execution
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Court 1: Group A */}
+                    {m1 && (
+                      <MatchCard
+                        match={{ ...m1, court: 1 }}
+                        isAdmin={isAdmin}
+                        savingId={savingId}
+                        onChange={handleScoreChange}
+                        onSave={saveScoreToSheet}
+                      />
+                    )}
+
+                    {/* Court 2: Group B */}
+                    {m2 && (
+                      <MatchCard
+                        match={{ ...m2, court: 2 }}
+                        isAdmin={isAdmin}
+                        savingId={savingId}
+                        onChange={handleScoreChange}
+                        onSave={saveScoreToSheet}
+                      />
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -391,9 +434,7 @@ export default function TournamentApp() {
               <h2 className="text-2xl font-bold text-amber-400">
                 Quarter-Finals (QF)
               </h2>
-              <p className="text-xs text-slate-400">
-                Single game for 21 points
-              </p>
+              <p className="text-xs text-slate-400">Single game for 21 points</p>
             </div>
 
             <div className="space-y-4">
@@ -402,16 +443,19 @@ export default function TournamentApp() {
                   QF 1: Group A #2 ({teamA2}) vs Group B #3 ({teamB3})
                 </span>
                 {(() => {
-                  const match21 = matches.find((m) => m.id === 21);
+                  const m21 = matches.find((m) => m.id === 21);
                   return (
                     <MatchCard
                       match={{
                         id: 21,
                         group: 'Knockout',
-                        s1: match21?.s1 ?? '',
-                        s2: match21?.s2 ?? '',
+                        s1: m21?.s1 ?? '',
+                        s2: m21?.s2 ?? '',
                         team1: teamA2,
                         team2: teamB3,
+                        u1: m21?.u1,
+                        u2: m21?.u2,
+                        u3: m21?.u3,
                       }}
                       isAdmin={isAdmin}
                       savingId={savingId}
@@ -427,16 +471,19 @@ export default function TournamentApp() {
                   QF 2: Group B #2 ({teamB2}) vs Group A #3 ({teamA3})
                 </span>
                 {(() => {
-                  const match22 = matches.find((m) => m.id === 22);
+                  const m22 = matches.find((m) => m.id === 22);
                   return (
                     <MatchCard
                       match={{
                         id: 22,
                         group: 'Knockout',
-                        s1: match22?.s1 ?? '',
-                        s2: match22?.s2 ?? '',
+                        s1: m22?.s1 ?? '',
+                        s2: m22?.s2 ?? '',
                         team1: teamB2,
                         team2: teamA3,
+                        u1: m22?.u1,
+                        u2: m22?.u2,
+                        u3: m22?.u3,
                       }}
                       isAdmin={isAdmin}
                       savingId={savingId}
@@ -487,6 +534,9 @@ export default function TournamentApp() {
                       team2: sf.t2,
                       s1: match?.s1 ?? '',
                       s2: match?.s2 ?? '',
+                      u1: match?.u1,
+                      u2: match?.u2,
+                      u3: match?.u3,
                     }}
                     isAdmin={isAdmin}
                     savingId={savingId}
@@ -521,6 +571,9 @@ export default function TournamentApp() {
                   team2: finalist2,
                   s1: rawMatch?.s1 ?? '',
                   s2: rawMatch?.s2 ?? '',
+                  u1: rawMatch?.u1,
+                  u2: rawMatch?.u2,
+                  u3: rawMatch?.u3,
                 };
                 return (
                   <div
@@ -640,12 +693,7 @@ export default function TournamentApp() {
                 </table>
               </div>
             </div>
-            {/* Semi-Finals Outcome */}
-            <StandingsTable
-              title="Semi-Final Round-Robin Standings (Top 2 to Finals)"
-              stats={sfStats}
-              color="text-sky-400"
-            />
+
             {/* Quarter-Finals Outcome Summary Table */}
             <div className="bg-slate-800 rounded-xl border border-slate-700 p-6 space-y-4">
               <h2 className="text-2xl font-bold text-amber-400">
@@ -725,6 +773,7 @@ export default function TournamentApp() {
                 </table>
               </div>
             </div>
+
             <StandingsTable
               title="Group A Standings"
               stats={groupAStats}
@@ -734,6 +783,11 @@ export default function TournamentApp() {
               title="Group B Standings"
               stats={groupBStats}
               color="text-emerald-400"
+            />
+            <StandingsTable
+              title="Semi-Final Round-Robin Standings (Top 2 to Finals)"
+              stats={sfStats}
+              color="text-sky-400"
             />
           </div>
         )}
@@ -760,15 +814,26 @@ function MatchCard({
   onChange,
   onSave,
 }: MatchCardProps) {
+  const hasUmpires = match.u1 || match.u2 || match.u3;
+
   return (
-    <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-col justify-between space-y-3">
-      <div className="flex justify-between text-xs font-bold text-slate-400">
-        <span>Match #{match.id}</span>
-        <span>{match.stage || `Group ${match.group}`}</span>
+    <div className="bg-slate-800/90 p-4 rounded-xl border border-slate-700 flex flex-col justify-between space-y-3 shadow-md">
+      <div className="flex justify-between items-center text-xs font-bold text-slate-400">
+        <div className="flex items-center gap-2">
+          {match.court && (
+            <span className="bg-slate-700 text-amber-400 px-2 py-0.5 rounded text-[10px] font-extrabold uppercase">
+              Court {match.court}
+            </span>
+          )}
+          <span>Match #{match.id}</span>
+        </div>
+        <span className="text-slate-400 font-semibold">
+          {match.stage || `Group ${match.group}`}
+        </span>
       </div>
 
       <div className="grid grid-cols-5 items-center gap-2">
-        <span className="col-span-2 text-right font-medium text-sm text-slate-200">
+        <span className="col-span-2 text-right font-medium text-sm text-slate-200 truncate">
           {match.team1}
         </span>
 
@@ -795,10 +860,41 @@ function MatchCard({
           />
         </div>
 
-        <span className="col-span-2 text-left font-medium text-sm text-slate-200">
+        <span className="col-span-2 text-left font-medium text-sm text-slate-200 truncate">
           {match.team2}
         </span>
       </div>
+
+      {/* UMPIRE ASSIGNMENT DISPLAY */}
+      {hasUmpires && (
+        <div className="mt-2 pt-2 border-t border-slate-700/60 flex flex-wrap justify-between gap-1 text-[11px] text-slate-400 bg-slate-900/50 p-2 rounded-lg">
+          {match.u1 && (
+            <div>
+              <span className="text-slate-500 block text-[9px] uppercase font-bold">
+                Mid Court
+              </span>
+              <span className="text-amber-300 font-medium">{match.u1}</span>
+            </div>
+          )}
+          {match.u2 && (
+            <div>
+              <span className="text-slate-500 block text-[9px] uppercase font-bold">
+                Near Wall
+              </span>
+              <span className="text-emerald-300 font-medium">{match.u2}</span>
+            </div>
+          )}
+          {match.u3 && (
+            <div>
+              <span className="text-slate-500 block text-[9px] uppercase font-bold">
+                Opposite Side
+              </span>
+              <span className="text-sky-300 font-medium">{match.u3}</span>
+            </div>
+          )}
+        </div>
+      )}
+
       {savingId === match.id && (
         <span className="text-xs text-amber-400 text-center animate-pulse">
           Syncing...
