@@ -12,16 +12,16 @@ const ADMIN_PIN =
 
 interface Match {
   id: number;
-  displayNumber?: number; // Visual override for sequential Session numbers
+  displayNumber?: number;
   group: 'A' | 'B' | 'Knockout' | 'SF' | 'Final';
   stage?: string;
   team1: string;
   team2: string;
   s1: number | '';
   s2: number | '';
-  u1?: string; // Umpire 1 (Mid Court)
-  u2?: string; // Umpire 2 (Near Wall)
-  u3?: string; // Umpire 3 (Opposite Side)
+  u1?: string;
+  u2?: string;
+  u3?: string;
   court?: number;
 }
 
@@ -79,7 +79,6 @@ export default function TournamentApp() {
 
         setMatches(formattedData);
 
-        // Find the first unplayed match (Next Active Match)
         const activeMatch = formattedData.find(
           (m: Match) =>
             m.s1 === '' || m.s2 === '' || m.s1 === null || m.s2 === null
@@ -90,7 +89,10 @@ export default function TournamentApp() {
             setActiveTab('group');
           } else if (activeMatch.group === 'Knockout') {
             setActiveTab('qf');
-          } else if (activeMatch.group === 'SF' || (activeMatch.group as any) === 'SF Round-Robin') {
+          } else if (
+            activeMatch.group === 'SF' ||
+            (activeMatch.group as any) === 'SF Round-Robin'
+          ) {
             setActiveTab('sf');
           } else if (activeMatch.group === 'Final') {
             setActiveTab('finals');
@@ -110,7 +112,6 @@ export default function TournamentApp() {
     }
   }, []);
 
-  // Scroll active match into view after render
   useEffect(() => {
     if (!loading && activeMatchRef.current) {
       setTimeout(() => {
@@ -328,12 +329,10 @@ export default function TournamentApp() {
   const finalist1 = sfStats[0]?.team || 'SF Rank 1';
   const finalist2 = sfStats[1]?.team || 'SF Rank 2';
 
-  // Identify first pending match ID globally
   const nextActiveMatchId = matches.find(
     (m) => m.s1 === '' || m.s2 === '' || m.s1 === null || m.s2 === null
   )?.id;
 
-  // Pair Group A (Court 1) and Group B (Court 2) side-by-side
   const groupAMatches = matches.filter((m) => m.group === 'A').sort((a, b) => a.id - b.id);
   const groupBMatches = matches.filter((m) => m.group === 'B').sort((a, b) => a.id - b.id);
 
@@ -356,28 +355,28 @@ export default function TournamentApp() {
   }
 
   return (
-    <div className="bg-slate-900 text-slate-100 min-h-screen p-4 md:p-8 font-sans">
-      <div className="max-w-7xl mx-auto space-y-8">
-        <header className="flex flex-col md:flex-row justify-between items-center border-b border-slate-700 pb-6 gap-4">
+    <div className="bg-slate-900 text-slate-100 min-h-screen p-3 md:p-8 font-sans">
+      <div className="max-w-7xl mx-auto space-y-6 md:space-y-8">
+        <header className="flex flex-col md:flex-row justify-between items-center border-b border-slate-700 pb-4 md:pb-6 gap-4">
           <div>
-            <h1 className="text-3xl md:text-4xl font-extrabold text-amber-400">
+            <h1 className="text-2xl md:text-4xl font-extrabold text-amber-400 text-center md:text-left">
               STRING SMASHERS 2026
             </h1>
-            <p className="text-slate-400 text-sm">
+            <p className="text-slate-400 text-xs md:text-sm text-center md:text-left">
               Live Badminton Tournament System
             </p>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-2 sm:gap-3">
             <button
               onClick={fetchMatches}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-semibold border border-slate-600"
+              className="px-3 py-1.5 md:px-4 md:py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs md:text-sm font-semibold border border-slate-600"
             >
-              🔄 Sync Scores
+              🔄 Sync
             </button>
             <button
               onClick={handleAdminToggle}
-              className={`px-4 py-2 rounded-lg font-semibold text-sm border ${
+              className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg font-semibold text-xs md:text-sm border ${
                 isAdmin
                   ? 'bg-rose-500/20 text-rose-300 border-rose-500'
                   : 'bg-slate-800 text-slate-300 border-slate-600'
@@ -388,19 +387,19 @@ export default function TournamentApp() {
           </div>
         </header>
 
-        {/* Cleaned Navigation Tabs without "Parallel Courts" text */}
-        <div className="flex flex-wrap justify-center gap-2 md:gap-4">
+        {/* Navigation Tabs */}
+        <div className="flex flex-wrap justify-center gap-1.5 md:gap-4">
           {[
             { id: 'group', label: '1. Group Stage' },
             { id: 'qf', label: '2. Quarter-Finals' },
             { id: 'sf', label: '3. Semi-Finals' },
-            { id: 'finals', label: '4. Finals (Best of 3)' },
+            { id: 'finals', label: '4. Finals' },
             { id: 'standings', label: '📊 All Tables' },
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${
+              className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg font-semibold text-xs md:text-sm transition ${
                 activeTab === tab.id
                   ? 'bg-amber-500 text-slate-950 font-bold'
                   : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
@@ -421,7 +420,9 @@ export default function TournamentApp() {
         {!loading && activeTab === 'group' && (
           <div className="space-y-6">
             <div className="bg-slate-800/80 p-4 rounded-xl border border-slate-700 flex flex-wrap justify-between items-center gap-2">
-              <h2 className="text-2xl font-bold text-amber-400">Group Stage</h2>
+              <h2 className="text-xl md:text-2xl font-bold text-amber-400">
+                Group Stage
+              </h2>
               <span className="text-xs bg-amber-500/20 text-amber-300 px-3 py-1 rounded-full border border-amber-500/30 font-semibold">
                 Court 1 (Group A) ⚡ Court 2 (Group B)
               </span>
@@ -431,16 +432,18 @@ export default function TournamentApp() {
               {parallelGroupMatches.map(({ slot, m1, m2 }) => (
                 <div
                   key={slot}
-                  className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-3"
+                  className="bg-slate-950/60 p-3 md:p-4 rounded-2xl border border-slate-800 space-y-3"
                 >
                   <div className="flex justify-between items-center border-b border-slate-800 pb-2">
                     <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">
                       Match Session #{slot}
                     </span>
+                    <span className="text-[11px] text-slate-500 font-medium">
+                      Simultaneous
+                    </span>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Court 1: Group A */}
                     {m1 && (
                       <MatchCard
                         match={{ ...m1, court: 1 }}
@@ -453,7 +456,6 @@ export default function TournamentApp() {
                       />
                     )}
 
-                    {/* Court 2: Group B */}
                     {m2 && (
                       <MatchCard
                         match={{ ...m2, court: 2 }}
@@ -477,7 +479,9 @@ export default function TournamentApp() {
           <div className="space-y-6">
             <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-wrap justify-between items-center gap-2">
               <div>
-                <h2 className="text-2xl font-bold text-amber-400">Quarter-Finals (QF)</h2>
+                <h2 className="text-xl md:text-2xl font-bold text-amber-400">
+                  Quarter-Finals (QF)
+                </h2>
                 <p className="text-xs text-slate-400">Single game for 21 points</p>
               </div>
               <span className="text-xs bg-amber-500/20 text-amber-300 px-3 py-1 rounded-full border border-amber-500/30 font-semibold">
@@ -485,7 +489,7 @@ export default function TournamentApp() {
               </span>
             </div>
 
-            <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-3">
+            <div className="bg-slate-950/60 p-3 md:p-4 rounded-2xl border border-slate-800 space-y-3">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <span className="text-xs font-bold text-amber-400 block mb-2">
@@ -558,9 +562,9 @@ export default function TournamentApp() {
         {/* TAB 3: SEMI-FINALS */}
         {!loading && activeTab === 'sf' && (
           <div className="space-y-6">
-            <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 flex flex-wrap justify-between items-center gap-2">
+            <div className="bg-slate-800 p-4 md:p-6 rounded-xl border border-slate-700 flex flex-wrap justify-between items-center gap-2">
               <div>
-                <h2 className="text-2xl font-bold text-amber-400">
+                <h2 className="text-xl md:text-2xl font-bold text-amber-400">
                   Semi-Finals: 4-Team Round-Robin
                 </h2>
                 <p className="text-xs text-slate-400 mt-1">
@@ -597,7 +601,7 @@ export default function TournamentApp() {
                 return (
                   <div
                     key={session}
-                    className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-3"
+                    className="bg-slate-950/60 p-3 md:p-4 rounded-2xl border border-slate-800 space-y-3"
                   >
                     <div className="flex justify-between items-center border-b border-slate-800 pb-2">
                       <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">
@@ -662,8 +666,10 @@ export default function TournamentApp() {
           <div className="space-y-6 max-w-3xl mx-auto">
             <div className="bg-slate-800 p-6 rounded-xl border border-amber-500/50 text-center space-y-2">
               <span className="text-3xl">🏆</span>
-              <h2 className="text-3xl font-extrabold text-amber-400">GRAND FINAL</h2>
-              <p className="text-sm text-slate-300">
+              <h2 className="text-2xl md:text-3xl font-extrabold text-amber-400">
+                GRAND FINAL
+              </h2>
+              <p className="text-xs md:text-sm text-slate-300">
                 Best of 3 Games ({finalist1} vs {finalist2})
               </p>
             </div>
@@ -687,7 +693,7 @@ export default function TournamentApp() {
                 return (
                   <div
                     key={id}
-                    className="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-2"
+                    className="bg-slate-800 p-3 md:p-4 rounded-xl border border-slate-700 space-y-2"
                   >
                     <MatchCard
                       match={match}
@@ -705,21 +711,22 @@ export default function TournamentApp() {
           </div>
         )}
 
-        {/* TAB 5: STANDINGS TABLES */}
+        {/* TAB 5: ALL TABLES (ORDER: FINALS -> SEMIS -> QF -> GROUP A -> GROUP B) */}
         {!loading && activeTab === 'standings' && (
           <div className="space-y-8">
-            <div className="bg-slate-800 rounded-xl border border-amber-500/40 p-6 space-y-4">
-              <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-amber-400 flex items-center gap-2">
+            {/* 1. FINALS OUTCOME TABLE */}
+            <div className="bg-slate-800 rounded-xl border border-amber-500/40 p-4 md:p-6 space-y-4">
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-1">
+                <h2 className="text-xl md:text-2xl font-bold text-amber-400 flex items-center gap-2">
                   <span>🏆</span> Grand Final Outcome (Best of 3)
                 </h2>
-                <span className="text-sm text-slate-400 font-semibold">
+                <span className="text-xs md:text-sm text-slate-400 font-semibold">
                   {finalist1} vs {finalist2}
                 </span>
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm border-collapse">
+                <table className="w-full text-left text-xs md:text-sm border-collapse">
                   <thead>
                     <tr className="border-b border-slate-700 text-slate-400 text-xs">
                       <th className="p-2">Game</th>
@@ -758,19 +765,19 @@ export default function TournamentApp() {
 
                             return (
                               <tr key={id} className="border-b border-slate-700/50">
-                                <td className="p-2 font-semibold text-slate-400">
-                                  Game {index + 1} (Match #{id})
+                                <td className="p-2 font-semibold text-slate-400 whitespace-nowrap">
+                                  Game {index + 1}
                                 </td>
                                 <td className="p-2 text-slate-300">
                                   {finalist1} vs {finalist2}
                                 </td>
-                                <td className="p-2 text-center font-mono text-slate-200">
+                                <td className="p-2 text-center font-mono text-slate-200 whitespace-nowrap">
                                   {m?.s1 !== '' && m?.s1 !== undefined
                                     ? `${m.s1} - ${m.s2}`
                                     : '—'}
                                 </td>
                                 <td
-                                  className={`p-2 text-right font-bold ${
+                                  className={`p-2 text-right font-bold whitespace-nowrap ${
                                     winner !== 'Pending'
                                       ? 'text-amber-400'
                                       : 'text-slate-500'
@@ -785,7 +792,7 @@ export default function TournamentApp() {
                             <td colSpan={3} className="p-3 text-slate-200">
                               CHAMPION
                             </td>
-                            <td className="p-3 text-right text-lg text-amber-400">
+                            <td className="p-3 text-right text-base md:text-lg text-amber-400 whitespace-nowrap">
                               {f1Wins >= 2
                                 ? `🥇 ${finalist1}`
                                 : f2Wins >= 2
@@ -801,20 +808,105 @@ export default function TournamentApp() {
               </div>
             </div>
 
+            {/* 2. SEMI-FINALS STANDINGS TABLE */}
+            <StandingsTable
+              title="Semi-Final Round-Robin Standings (Top 2 to Finals)"
+              stats={sfStats}
+              color="text-sky-400"
+            />
+
+            {/* 3. QUARTER-FINALS OUTCOME TABLE */}
+            <div className="bg-slate-800 rounded-xl border border-slate-700 p-4 md:p-6 space-y-4">
+              <h2 className="text-xl md:text-2xl font-bold text-amber-400">
+                Quarter-Finals Outcome
+              </h2>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs md:text-sm border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-700 text-slate-400 text-xs">
+                      <th className="p-2">Match</th>
+                      <th className="p-2">Matchup</th>
+                      <th className="p-2 text-center">Score</th>
+                      <th className="p-2 font-bold text-amber-400">QF Winner</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(() => {
+                      const m21 = matches.find((m) => m.id === 21);
+                      const m22 = matches.find((m) => m.id === 22);
+
+                      const qf1Team1 =
+                        m21?.team1 && !m21.team1.includes('Group')
+                          ? m21.team1
+                          : teamA2;
+                      const qf1Team2 =
+                        m21?.team2 && !m21.team2.includes('Group')
+                          ? m21.team2
+                          : teamB3;
+
+                      const qf2Team1 =
+                        m22?.team1 && !m22.team1.includes('Group')
+                          ? m22.team1
+                          : teamB2;
+                      const qf2Team2 =
+                        m22?.team2 && !m22.team2.includes('Group')
+                          ? m22.team2
+                          : teamA3;
+
+                      return (
+                        <>
+                          <tr className="border-b border-slate-700/50">
+                            <td className="p-2 font-semibold text-slate-400 whitespace-nowrap">
+                              QF 1 (#21)
+                            </td>
+                            <td className="p-2 text-slate-300">
+                              {qf1Team1} vs {qf1Team2}
+                            </td>
+                            <td className="p-2 text-center font-mono text-slate-200 whitespace-nowrap">
+                              {m21?.s1 !== '' && m21?.s1 !== undefined
+                                ? `${m21.s1} - ${m21.s2}`
+                                : 'Pending'}
+                            </td>
+                            <td className="p-2 font-bold text-amber-400 whitespace-nowrap">
+                              {winnerQF1}
+                            </td>
+                          </tr>
+                          <tr className="border-b border-slate-700/50">
+                            <td className="p-2 font-semibold text-slate-400 whitespace-nowrap">
+                              QF 2 (#22)
+                            </td>
+                            <td className="p-2 text-slate-300">
+                              {qf2Team1} vs {qf2Team2}
+                            </td>
+                            <td className="p-2 text-center font-mono text-slate-200 whitespace-nowrap">
+                              {m22?.s1 !== '' && m22?.s1 !== undefined
+                                ? `${m22.s1} - ${m22.s2}`
+                                : 'Pending'}
+                            </td>
+                            <td className="p-2 font-bold text-amber-400 whitespace-nowrap">
+                              {winnerQF2}
+                            </td>
+                          </tr>
+                        </>
+                      );
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* 4. GROUP A STANDINGS TABLE */}
             <StandingsTable
               title="Group A Standings"
               stats={groupAStats}
               color="text-amber-400"
             />
+
+            {/* 5. GROUP B STANDINGS TABLE */}
             <StandingsTable
               title="Group B Standings"
               stats={groupBStats}
               color="text-emerald-400"
-            />
-            <StandingsTable
-              title="Semi-Final Round-Robin Standings (Top 2 to Finals)"
-              stats={sfStats}
-              color="text-sky-400"
             />
           </div>
         )}
@@ -824,7 +916,7 @@ export default function TournamentApp() {
 }
 
 // -------------------------------------------------------------
-// REUSABLE MATCH CARD & TABLE COMPONENTS
+// REUSABLE MATCH CARD & TABLE COMPONENTS (MOBILE RESPONSIVE FIXED)
 // -------------------------------------------------------------
 interface MatchCardProps {
   match: Match;
@@ -859,7 +951,7 @@ function MatchCard({
   return (
     <div
       ref={activeRef}
-      className={`p-4 rounded-xl flex flex-col justify-between space-y-3 shadow-md transition-all duration-300 relative ${
+      className={`p-3.5 md:p-4 rounded-xl flex flex-col justify-between space-y-3 shadow-md transition-all duration-300 relative ${
         isNextMatch
           ? 'bg-slate-800 border-2 border-amber-400 ring-4 ring-amber-400/20 shadow-amber-500/10'
           : 'bg-slate-800/90 border border-slate-700'
@@ -871,8 +963,9 @@ function MatchCard({
         </span>
       )}
 
+      {/* Header Info */}
       <div className="flex justify-between items-center text-xs font-bold text-slate-400">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {match.court && (
             <span className="bg-slate-700 text-amber-400 px-2 py-0.5 rounded text-[10px] font-extrabold uppercase">
               Court {match.court}
@@ -880,16 +973,18 @@ function MatchCard({
           )}
           <span>Match #{displayNum}</span>
         </div>
-        <span className="text-slate-400 font-semibold">
+        <span className="text-slate-400 font-semibold text-[11px]">
           {match.stage || `Group ${match.group}`}
         </span>
       </div>
 
-      <div className="grid grid-cols-5 items-center gap-2">
-        <div className="col-span-2 flex items-center justify-end gap-1.5 truncate">
+      {/* Teams & Scores Layout - Clean Mobile Responsive Stack */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-2 py-1">
+        {/* TEAM 1 */}
+        <div className="flex items-center justify-center sm:justify-end gap-1.5 w-full sm:w-2/5 text-center sm:text-right">
           {isTeam1Winner && <span className="text-emerald-400 text-xs">✓</span>}
           <span
-            className={`font-semibold text-sm truncate transition-colors ${
+            className={`font-semibold text-xs sm:text-sm transition-colors ${
               isTeam1Winner
                 ? 'text-emerald-400 font-extrabold drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]'
                 : 'text-slate-200'
@@ -899,7 +994,8 @@ function MatchCard({
           </span>
         </div>
 
-        <div className="flex justify-center gap-1">
+        {/* SCORES INPUTS */}
+        <div className="flex justify-center items-center gap-1.5 my-1 sm:my-0">
           <input
             type="number"
             min="0"
@@ -914,6 +1010,7 @@ function MatchCard({
             }`}
             placeholder="0"
           />
+          <span className="text-slate-600 text-xs font-bold">:</span>
           <input
             type="number"
             min="0"
@@ -930,9 +1027,10 @@ function MatchCard({
           />
         </div>
 
-        <div className="col-span-2 flex items-center justify-start gap-1.5 truncate">
+        {/* TEAM 2 */}
+        <div className="flex items-center justify-center sm:justify-start gap-1.5 w-full sm:w-2/5 text-center sm:text-left">
           <span
-            className={`font-semibold text-sm truncate transition-colors ${
+            className={`font-semibold text-xs sm:text-sm transition-colors ${
               isTeam2Winner
                 ? 'text-emerald-400 font-extrabold drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]'
                 : 'text-slate-200'
@@ -944,8 +1042,9 @@ function MatchCard({
         </div>
       </div>
 
+      {/* UMPIRES DISPLAY */}
       {hasUmpires && (
-        <div className="mt-2 pt-2 border-t border-slate-700/60 flex flex-wrap justify-between gap-1 text-[11px] text-slate-400 bg-slate-900/50 p-2 rounded-lg">
+        <div className="mt-2 pt-2 border-t border-slate-700/60 flex flex-wrap justify-around sm:justify-between gap-2 text-[11px] text-slate-400 bg-slate-900/50 p-2 rounded-lg text-center sm:text-left">
           {match.u1 && (
             <div>
               <span className="text-slate-500 block text-[9px] uppercase font-bold">
@@ -990,12 +1089,12 @@ interface StandingsTableProps {
 
 function StandingsTable({ title, stats, color }: StandingsTableProps) {
   return (
-    <div className="bg-slate-800 rounded-xl border border-slate-700 p-6 space-y-4">
-      <h2 className={`text-2xl font-bold ${color}`}>{title}</h2>
+    <div className="bg-slate-800 rounded-xl border border-slate-700 p-4 md:p-6 space-y-4">
+      <h2 className={`text-xl md:text-2xl font-bold ${color}`}>{title}</h2>
       <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
+        <table className="w-full text-left border-collapse text-xs md:text-sm">
           <thead>
-            <tr className="border-b border-slate-700 text-slate-400 text-sm">
+            <tr className="border-b border-slate-700 text-slate-400">
               <th className="p-2">Rank</th>
               <th className="p-2">Team</th>
               <th className="p-2 text-center">Played</th>
@@ -1011,7 +1110,9 @@ function StandingsTable({ title, stats, color }: StandingsTableProps) {
             {stats.map((s, idx) => (
               <tr key={s.team} className="border-b border-slate-700/50">
                 <td className="p-2 font-bold text-slate-400">{idx + 1}</td>
-                <td className="p-2 font-semibold text-slate-100">{s.team}</td>
+                <td className="p-2 font-semibold text-slate-100 whitespace-nowrap">
+                  {s.team}
+                </td>
                 <td className="p-2 text-center">{s.played}</td>
                 <td className="p-2 text-center text-emerald-400">{s.wins}</td>
                 <td className="p-2 text-center text-rose-400">{s.losses}</td>
@@ -1020,7 +1121,7 @@ function StandingsTable({ title, stats, color }: StandingsTableProps) {
                 <td className="p-2 text-center">
                   {s.pd > 0 ? `+${s.pd}` : s.pd}
                 </td>
-                <td className={`p-2 text-center font-bold text-lg ${color}`}>
+                <td className={`p-2 text-center font-bold text-base md:text-lg ${color}`}>
                   {s.pts}
                 </td>
               </tr>
